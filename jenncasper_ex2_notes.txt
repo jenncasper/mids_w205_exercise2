@@ -1,0 +1,160 @@
+You will use Streamparse as seen in Lab 6 with a given topology. The application reads the stream of tweets from the Twitter streaming API, parses them, counts the number of each word in the stream of tweets, and writes the final results back to a Postgres database.
+
+git clone _____; cd _____; ./run.sh
+
+Architecture.pdf: The main points here are to:
+- Show that you understand what you did and how this whole thing works.
+    - Wherever you made a decision on how to implement something, demonstrate that you considered alternative ways and made a decision for specific reasons.
+    - This document should cover everything: serving scripts, application, storm, Tweepy and what's an oauth.
+- screenshots: Screenshots (or selfies) of you running stuff... just a crude (or fun) way to demonstrate you did stuff, with good coverage of the exercise. Minimum 3, maximum 6.
+- Readme.txt: Ideally very short: how to run it (e.g.  git clone ____; cd ____; ./run.sh) any additional info about the project.
+- You can assume I have storm and postrgres installed (not the specific databases and tables that may or may not exist) but that's it.
+- Plot.png: a bar chart showing the top 20 words in your twitter stream. Might as well include a plot.txt of how you generated it.
+
+STEP 1. ENVIRONMENT AND TOOL SETUP
+
+1. Clone the Github Repository for this exercise - done
+
+2. Create an EC2 instance using the following AMI. Note that this AMI is the same as the AMI that you used for lab 6
+
+AMI Name: UCB MIDS W205 EX2-FULL AMI ID: ami-d4dd4ec3
+fdisk -l
+mount -t ext4 /dev/blah /data
+pip install psycopg2
+
+3. Create EXTweetwordcount project
+
+Ran the example when using sparse quickstart test. Copied in all of the files from gihub. The stream runs but notes the tweet stream is empty due to it not being setup.
+
+See screenshot_step1_tweetparsesetup.png
+
+STEP 2. TWITTER APPLICATION SETUP
+
+1. Install Tweepy
+
+$pip install tweepy
+
+2. Create Twitter account and application
+
+Consumer Key (API Key) BwLb8YNyZeePZnRZ4Waf5APwN
+Consumer Secret (API Secret) VevClvCc5psGUgUZXxdL56exWj6Kxo694mjEspF0tSjjnwpmFY
+Access Level Read and write (modify app permissions)
+Owner JC87194564
+Owner ID 800393487753449473 
+
+Access Token 800393487753449473-JJThcBGCNQGi7AimrsRzhY9Nj7cw6YD
+Access Token Secret 9qzIbKYj9INQClBqHuLXJOAa5KjOO8FOGia1piBj1CBRO
+Access Level Read and write
+Owner JC87194564
+Owner ID 800393487753449473
+
+3. Test the application
+
+$python hello-stream-twitter.py
+
+Screen shot of printing out tweets using hello-stream-twitter - screenshot_step2_apptest.png
+
+STEP 3. APPLICATION DEPLOYMENT
+
+1. Set up the twitter streaming spout - modified the credentials in tweets.py
+
+sparse run --name tweetprint
+See screenshot_step3_tweetspoutprintbolt.png
+
+2. Set up tweet-parse bolt
+
+sparse run --name tweetparse
+See the screenshot_step3_tweetspoutparsebolt.png
+
+3. Set up the tweet-wordcount bolt and updates the total counts for each word in a corresponding table inside a database
+
+sparse run --name tweetwordcount
+Checked the wordcount bolt to start with - see the screenshot_step3_tweetspoutwordcountbolt.png
+
+Make sure to run as user - "su - w205"
+Can select toplogies using the name parameter - "sparse run --name tweetprint"
+
+Checked that I could run the new shell topology and bolt - sparse run --name tweetwordcountdb
+
+Make sure to start postgres server - /data/start_postgres.sh
+
+Setup the table prior to sparse (avoid table creation getting jacked up):
+
+DROP DATABASE IF EXISTS "Tcount";
+CREATE DATABASE "Tcount";
+CONNECT "Tcount";
+DROP TABLE IF EXISTS Tweetwordcount;
+CREATE TABLE "Tweetwordcount" (
+    word        TEXT PRIMARY KEY NOT NULL,
+    count       INT NOT NULL
+);
+
+psql --dbname Tcount --username postgres --no-password --host localhost --port 5432 --file create.sql
+
+psql --username postgres -c "DROP DATABASE IF EXISTS \"Tcount\""
+psql --username postgres -c "CREATE DATABASE \"Tcount\""
+psql --username postgres -c "\l"
+psql --username postgres --dbname "Tcount" -c "\dt"
+psql --dbname "Tcount" --username postgres --no-password --host localhost --port 5432 --file create.sql 
+psql --username postgres --dbname "Tcount" -c "\dt"
+psql --username postgres --dbname "Tcount" -c "\d \"Tweetwordcount\""
+psql --username postgres --dbname "Tcount" -c "SELECT * FROM \"Tweetwordcount\""
+
+psql --username postgres -c "DROP DATABASE IF EXISTS Tcount"
+psql --username postgres -c "CREATE DATABASE Tcount"
+psql --username postgres -c "\l"
+psql --username postgres --dbname tcount -c "\dt"
+psql --dbname tcount --username postgres --no-password --host localhost --port 5432 --file create.sql 
+psql --username postgres --dbname tcount -c "\dt"
+psql --username postgres --dbname tcount -c "\d Tweetwordcount"
+psql --username postgres --dbname tcount -c "SELECT * FROM Tweetwordcount"
+
+import psycopg2
+try:
+    conn = psycopg2.connect(database="tcount", user="postgres", host="localhost", port="5432")
+except:
+    print "I am unable to connect to the database"
+
+cur = conn.cursor()
+
+cur.execute("SELECT * FROM Tweetwordcount")
+records = cur.fetchall()
+
+(uWord2, uCount2) = ('crap', 10)
+cur.execute("INSERT INTO Tweetwordcount (word, count) VALUES (%s, 1)", (uWord2,))
+
+cur.mogrify(sql, (data,))
+
+See the screenshot_step3_tweetspoutwordcountpostgresbolt.png
+
+STEP 4. Serving Scripts.
+
+finalresults.py in exercise2 directory root
+
+histogram.py in exercise2 directory root
+
+top 20 tweet words saved as plot.png
+- psql --username postgres --dbname tcount -c "SELECT word, count FROM Tweetwordcount ORDER BY count DESC LIMIT 20"
+- results from the query:
+ word, count 
+ is, 651
+ my, 422
+ this, 384
+ so, 358
+ me, 316
+ are, 269
+ with, 246
+ the, 233
+ love, 213
+ have, 209
+ just, 185
+ I, 184
+ &amp, 167
+ get, 163
+ to, 162
+ we, 162
+ when, 155
+ a, 151
+ you, 148
+ one, 145
+

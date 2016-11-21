@@ -1,0 +1,119 @@
+----STEP 1. ENVIRONMENT AND TOOL SETUP
+
+- One medium EC2 instance using the "W205 EX2-FULL AMI" image was instantiated. 
+- The code framework was cloned from the Github repository for w205.
+
+- Four main applications necessary to create a twitter data pipeline for this exercise:
+    1. Twitter Application - API to access the live Twitter stream made available
+    2. Apache Storm - streaming application to manage the ingest, processing, and output of the Twitter data stream
+    3. Streamparse - Python based application used in conjunction with Apache Storm to provide a Python interface that relates a data source to a "spout" and a ingest/processing/output entity as a "bolt"
+    4. Postgres - relational data store for for the live tweet word count information
+
+- Ran the example when using sparse quickstart test after all sample files in place - see screenshot_step1_tweetparsesetup.png
+
+- Directory structure for the exercise
+    - exercise2 - root
+        - EXTweetwordcount - directory for streamparse code entities and associated files
+            - create.sql - used to drop/create postgres database and table to store live tweet word counts
+            - topologies - directory for topology clj files
+                - wordcount.clj
+                - tweetprint.clj
+                - tweetparse.clj
+                - tweetwordcount.clj
+                - tweetwordcountdb.clj
+            - src
+                - bolts - directory for the ingest/processing code entities
+                    - parse.py
+                    - tweetprint.py
+                    - wordcount.py
+                    - wordcountdb.py
+                - spouts - data source code entities
+                    - tweets.py - contains credentials necessary to connect to Twitter application feed
+        - Twittercredentials.py - credentials information
+        - hello-stream-twitter.py - sample code to connect to Twitter feed
+        - psycopg-sample.py - sample code to connect/query postgres from Python
+        - finalresults.py - serving script 1, part of step 4, that queries postgres for a word count
+        - histogram.py - serving script 2, part of step 4, that queries postgress for word and count pairs within a range
+    - jenncasper_ex2_architecture.txt
+    - jenncasper_ex2_notes.txt
+    - plot.png
+    - screenshots - directory for the 6 screenshots referenced in this document
+
+----STEP 2. TWITTER APPLICATION AND POSTGRES SETUP
+
+- Required install of Tweepy (for Twitter API connection) and psycopg2 (postgres connection using Python) libraries
+- Created a Twitter account and application in order to access the live Twitter feed
+- Started the postgres server /data/start_postgres.sh
+- Tested the application access using the provided sample code: $python hello-stream-twitter.py
+
+- See screen shot of printing out tweets using hello-stream-twitter - screenshot_step2_apptest.png
+
+----STEP 3. APPLICATION DEPLOYMENT
+
+I took a phased approach to building the end to end connection in order to maintain an overview of the pipeline. Each of the four phases outlined below has an additional level of complexity to meet the final goal of maintaining tweet word counts in postgress from a live stream.
+
+1. Set up the twitter streaming spout - modified the credentials in tweets.py
+
+sparse run --name tweetprint
+See screenshot_step3_tweetspoutprintbolt.png
+
+2. Set up tweet-parse bolt
+
+sparse run --name tweetparse
+See the screenshot_step3_tweetspoutparsebolt.png
+
+3. Set up the tweet-wordcount bolt and updates the total counts for each word
+
+sparse run --name tweetwordcount
+See the screenshot_step3_tweetspoutwordcountbolt.png
+
+4. Set up the tweet-wordcount bolt that initializes and updates total counts for each word in a postgres database
+
+Run as user - "su - w205"
+Checked operation of the new shell topology and bolt - sparse run --name tweetwordcountdb
+Checked the postgres server - /data/start_postgres.sh
+
+Necessary commands to drop/create the postgres database and table:
+psql --username postgres -c "DROP DATABASE IF EXISTS Tcount"
+psql --username postgres -c "CREATE DATABASE Tcount"
+psql --username postgres -c "\l"
+psql --username postgres --dbname tcount -c "\dt"
+psql --dbname tcount --username postgres --no-password --host localhost --port 5432 --file create.sql 
+psql --username postgres --dbname tcount -c "\dt"
+psql --username postgres --dbname tcount -c "\d Tweetwordcount"
+psql --username postgres --dbname tcount -c "SELECT * FROM Tweetwordcount"
+
+Modified the bolt and topologies for wordcountdb
+sparse run --name tweetwordcountdb
+See the screenshot_step3_tweetspoutwordcountpostgresbolt.png
+
+----STEP 4. SERVING SCRIPTS AND PLOT
+
+finalresults.py - means to query the postgres database for a specific or all word/count pairs ordered by word (ascending alphabetically) - 
+
+python finalresults.py hello
+python finalresults.py you
+python finalresults.py
+
+histogram.py - means to obtain word/count pairs ordered by descending count within a desired range - 
+
+python histogram.py 3,8
+python histogram.py
+python histogram.py garbage,garbage
+
+plot.png - contains a bar graph of the top 20 words by occrance count
+
+Data was obtained by querying the postgres database - SELECT word, count FROM Tweetwordcount ORDER BY count DESC LIMIT 20
+Results of the psql query were copied into Apple Numbers, a bar chart was produced, and a png was exported
+
+----SUBMISSION ITEMS
+
+1. code base in github with instructions for -> git clone _____; cd _____; ./run.sh
+2. jenncasper_ex2_architecture.txt
+3. directory called screenshots containing the screenshots referenced in this document
+4. readme.txt 
+5. plot.png
+
+
+
+

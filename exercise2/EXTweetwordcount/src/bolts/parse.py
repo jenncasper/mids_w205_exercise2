@@ -46,3 +46,7 @@ class ParseTweet(Bolt):
         self.emit_many(valid_words)
 
         # tuple acknowledgement is handled automatically
+
+	# Log the words to see the topology running
+	self.log(valid_words)
+
