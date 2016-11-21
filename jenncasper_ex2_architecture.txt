@@ -29,11 +29,15 @@
                     - wordcountdb.py
                 - spouts - data source code entities
                     - tweets.py - contains credentials necessary to connect to Twitter application feed
-            - Twittercredentials.py - credentials information
-            - hello-stream-twitter.py - sample code to connect to Twitter feed
-            - psycopg-sample.py - sample code to connect/query postgres from Python
-            - finalresults.py - serving script 1, part of step 4, that queries postgres for a word count
-            - histogram.py - serving script 2, part of step 4, that queries postgress for word and count pairs within a range
+        - Twittercredentials.py - credentials information
+        - hello-stream-twitter.py - sample code to connect to Twitter feed
+        - psycopg-sample.py - sample code to connect/query postgres from Python
+        - finalresults.py - serving script 1, part of step 4, that queries postgres for a word count
+        - histogram.py - serving script 2, part of step 4, that queries postgress for word and count pairs within a range
+    - jenncasper_ex2_architecture.txt
+    - jenncasper_ex2_notes.txt
+    - plot.png
+    - screenshots - directory for the 6 screenshots referenced in this document
 
 ----STEP 2. TWITTER APPLICATION AND POSTGRES SETUP
 
